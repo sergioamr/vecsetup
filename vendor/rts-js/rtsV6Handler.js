@@ -395,7 +395,7 @@ class RtsV6Handler {
       let self = this;
       this.connRequestHandle = setTimeout(function () {
         self.cancelConnection();
-      }, 3000);
+      }, 30000); // vecsetup: was 3000, too short over slow BLE links
       this.send(
         Rts.RtsConnection_6.NewRtsConnection_6WithRtsConnResponse(
           new Rts.RtsConnResponse(
