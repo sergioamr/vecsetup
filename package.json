@@ -1,0 +1,44 @@
+{
+  "name": "vecsetup",
+  "version": "0.1.0",
+  "description": "Command-line Bluetooth setup, Wi-Fi and firmware flashing for Anki Vector robots on Linux (recovery v2 to WireOS v5)",
+  "type": "module",
+  "bin": {
+    "vecsetup": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "vendor"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "anki-vector",
+    "vector-robot",
+    "wireos",
+    "bluetooth-low-energy",
+    "linux",
+    "cli"
+  ],
+  "dependencies": {
+    "commander": "^15.0.0",
+    "libsodium-wrappers": "^0.8.4",
+    "node-ble": "^1.13.0",
+    "string-argv": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/libsodium-wrappers": "^0.8.2",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
