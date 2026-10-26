@@ -1,6 +1,8 @@
 # vecsetup
 
-Command-line Bluetooth setup, Wi-Fi and firmware flashing for **Anki / Digital Dream Labs Vector** robots on **Linux**. No Chrome, no Web Bluetooth flags.
+**Linux pairing and firmware flashing for Anki Vector robots, from the command line.**
+
+Pair over Bluetooth, put the robot on Wi-Fi, and install firmware images (recovery → unlock → WireOS), with no Chrome and no Web Bluetooth flags.
 
 It speaks every version of Vector's BLE setup protocol ("RTS"), from **v2** (factory and recovery firmware) to **v5/v6** (production firmware and WireOS). It uses Digital Dream Labs' own MIT-licensed protocol code with a new Linux Bluetooth layer (BlueZ over D-Bus).
 
