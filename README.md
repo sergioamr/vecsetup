@@ -16,7 +16,7 @@ vecsetup ota ./dev.ota             # serve a local .ota from this machine and in
 vecsetup ota http://host/x.ota     # or install from a URL Vector can reach
 ```
 
-> Status: early, tested against one robot (recovery v0.9.0 → unlock → WireOS 3.0.2.36d) on Debian 13 with an Intel 8260 adapter. Reports from other setups are welcome.
+> Status: early. Verified on one robot (Debian 13, Intel 8260 adapter): pairing with PIN, saved-session reconnect without PIN, `status` and `ip` on WireOS (RTS v5). The full recovery → unlock → WireOS path was done with the web page this tool replaces; `wifi` and `ota` through vecsetup are covered by tests but not yet run on hardware. Reports from other setups are welcome.
 
 ## Install
 
