@@ -84,3 +84,31 @@ describe('cloud sign-in (vecsetup auth)', () => {
     expect(bad.status).toBe('invalid session token');
   });
 });
+
+describe('finishing first-time setup (onboarding)', () => {
+  it('sends settings then marks onboarding complete, with the sign-in client token', async () => {
+    const { WIREPOD_SESSION_TOKEN } = await import('../src/rts.js');
+    const robot = await new FakeVector().init();
+    const s = await RtsSession.open(await linkTo(robot), new Sessions(path.join(dir, 's.json')), { askPin: async () => robot.pin }, 5000);
+    const auth = await s.cloudAuth(WIREPOD_SESSION_TOKEN, 2000);
+
+    const steps: string[] = [];
+    await s.finishOnboarding(auth.clientTokenGuid, { timeZone: 'Europe/London', locale: 'en-GB', metric: true, fahrenheit: false }, (p, code) => steps.push(`${p} ${code}`));
+
+    expect(robot.sdkCalls.map((c) => c.path)).toEqual([
+      '/v1/alexa_opt_in', '/v1/update_account_settings', '/v1/update_settings', '/v1/send_onboarding_input',
+    ]);
+    expect(robot.sdkCalls.every((c) => c.guid === 'guid-1234abcd')).toBe(true);
+    expect(robot.sdkCalls[2].body.settings).toEqual({ time_zone: 'Europe/London', locale: 'en-GB', dist_is_metric: true, temp_is_fahrenheit: false });
+    expect(robot.sdkCalls[3].body).toEqual({ onboarding_mark_complete_and_exit: {} });
+    expect(steps.every((x) => x.endsWith(' 200'))).toBe(true);
+  });
+
+  it('stops at the first failing step', async () => {
+    const robot = await new FakeVector().init();
+    const s = await RtsSession.open(await linkTo(robot), new Sessions(path.join(dir, 's.json')), { askPin: async () => robot.pin }, 5000);
+    await expect(s.finishOnboarding('wrong-guid', { timeZone: 'UTC', locale: 'en-US', metric: true, fahrenheit: false }))
+      .rejects.toThrow(/alexa_opt_in failed with status 401/);
+    expect(robot.sdkCalls).toHaveLength(1);
+  });
+});

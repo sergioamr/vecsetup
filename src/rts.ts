@@ -24,6 +24,8 @@ export const CLOUD_STATUS: Record<number, string> = {
   6: 'reauthorized',
 };
 
+export type OnboardingSettings = { timeZone: string; locale: string; metric: boolean; fahrenheit: boolean };
+
 /** The session token wire-pod's own Bluetooth setup sends (chipper/pkg/wirepod/setup/ble.go). */
 export const WIREPOD_SESSION_TOKEN = '2vMhFgktH3Jrbemm2WHkfGN';
 
@@ -140,6 +142,38 @@ export class RtsSession {
   }
 
   otaCancel() { return this.handler.doOtaCancel(''); }
+
+  /** Call Vector's SDK API through the Bluetooth link (needs the client token from cloudAuth). */
+  async sdk(clientGuid: string, path: string, body: unknown, timeoutMs = 30_000): Promise<{ statusCode: number; body: string }> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`no answer from Vector for ${path}`)), timeoutMs);
+    });
+    try {
+      const m: any = await Promise.race([this.handler.doSdk(clientGuid, '1', path, JSON.stringify(body)), timeout]);
+      return { statusCode: Number(m.value.statusCode), body: String(m.value.responseBody ?? '') };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * The steps Anki's app (and DDL's web setup) ran after sign-in: settings, then
+   * "onboarding complete", which takes Vector out of its first-time-setup screen.
+   */
+  async finishOnboarding(clientGuid: string, s: OnboardingSettings, report?: (step: string, status: number) => void) {
+    const steps: [string, unknown][] = [
+      ['/v1/alexa_opt_in', { opt_in: false }],
+      ['/v1/update_account_settings', { account_settings: { data_collection: false, app_locale: s.locale } }],
+      ['/v1/update_settings', { settings: { time_zone: s.timeZone, locale: s.locale, dist_is_metric: s.metric, temp_is_fahrenheit: s.fahrenheit } }],
+      ['/v1/send_onboarding_input', { onboarding_mark_complete_and_exit: {} }],
+    ];
+    for (const [path, body] of steps) {
+      const r = await this.sdk(clientGuid, path, body);
+      report?.(path, r.statusCode);
+      if (r.statusCode !== 200) throw new Error(`${path} failed with status ${r.statusCode}: ${r.body.slice(0, 200)}`);
+    }
+  }
 
   /**
    * Ask Vector to sign in with its configured voice/account server (server_config.json).

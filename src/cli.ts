@@ -102,14 +102,24 @@ program
   .command('auth')
   .description('make Vector sign in with its configured server (e.g. your wire-pod); replaces the web setup\'s "activate" step')
   .option('-t, --token <token>', 'session token to relay (default: the one wire-pod\'s own Bluetooth setup uses)', WIREPOD_SESSION_TOKEN)
-  .action(async (cmd: { token: string }) => {
+  .option('--no-onboarding', 'only sign in; leave Vector\'s first-time-setup screen alone')
+  .option('--time-zone <tz>', 'time zone for Vector', Intl.DateTimeFormat().resolvedOptions().timeZone)
+  .option('--locale <locale>', 'locale, e.g. en-GB', (process.env.LANG || 'en_US').split('.')[0].replace('_', '-'))
+  .option('--imperial', 'miles and Fahrenheit instead of metric and Celsius')
+  .action(async (cmd: { token: string; onboarding: boolean; timeZone: string; locale: string; imperial?: boolean }) => {
     const { session, close } = await connect(program.opts());
     const st = await session.status();
     if (st.wifiState !== 1 && st.wifiState !== 2) die(`Vector is not on Wi-Fi (state ${st.wifiState}). Run: vecsetup wifi <ssid>`);
     log('Asking Vector to sign in with the server in its server_config.json...');
     const r = await session.cloudAuth(cmd.token);
     log(`${r.success ? 'Signed in' : 'Sign-in failed'}: ${r.status}${r.clientTokenGuid ? ` (client token ${r.clientTokenGuid.slice(0, 8)}…)` : ''}`);
-    if (!r.success) process.exitCode = 1;
+    if (!r.success) { process.exitCode = 1; await close(); return; }
+    if (cmd.onboarding) {
+      const settings = { timeZone: cmd.timeZone, locale: cmd.locale, metric: !cmd.imperial, fahrenheit: Boolean(cmd.imperial) };
+      log(`Finishing first-time setup (${settings.timeZone}, ${settings.locale}, ${settings.metric ? 'metric, Celsius' : 'imperial, Fahrenheit'})...`);
+      await session.finishOnboarding(r.clientTokenGuid, settings, (step, code) => log(`  ${step}: ${code}`));
+      log('Done: Vector should leave the setup screen.');
+    }
     await close();
   });
 
