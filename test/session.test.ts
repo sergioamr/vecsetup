@@ -46,8 +46,10 @@ describe('pairing with a simulated Vector (RTS v5)', () => {
   it('reconnects with stored keys and does not ask for the PIN again', async () => {
     const robot = await new FakeVector().init();
     const file = path.join(dir, 's.json');
-    await RtsSession.open(await linkTo(robot), new Sessions(file), { askPin: async () => robot.pin }, 5000);
-    await new Promise((r) => setTimeout(r, 50)); // let the post-pair status call save the session
+    const first = await RtsSession.open(await linkTo(robot), new Sessions(file), { askPin: async () => robot.pin }, 5000);
+    // Call status() straight away, like `vecsetup status` does. This used to orphan the
+    // post-pairing status request that decides whether to save keys (seen on a real robot).
+    await first.status();
     expect(fs.existsSync(file)).toBe(true);
 
     const again = await RtsSession.open(await linkTo(robot), new Sessions(file), {

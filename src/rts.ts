@@ -51,12 +51,15 @@ export class RtsSession {
             ev.otaProgress?.({ status: Number(value.status), current: Number(value.current), expected: Number(value.expected) }),
           );
           if (h.onCloudAuthorized) h.onCloudAuthorized((value: any) => { if (value.success) s.saveSession(); });
-          h.onEncryptedConnection(() => {
+          h.onEncryptedConnection(async () => {
             clearTimeout(timer);
             // Same rule as DDL's client: keep the keys unless the robot is owned and not cloud-authed.
-            h.doStatus().then((m: any) => {
+            // Finish this before handing the session out: DDL's handler tracks only one pending
+            // request per type, so a caller's own status() would otherwise orphan this one.
+            try {
+              const m = await h.doStatus();
               if (v <= 3 || !m.value.hasOwner || m.value.isCloudAuthed) s.saveSession();
-            }).catch(() => {});
+            } catch { /* keys just aren't saved; pairing still works for this run */ }
             resolve(s);
           });
 
