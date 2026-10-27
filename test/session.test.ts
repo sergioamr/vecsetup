@@ -68,3 +68,19 @@ describe('pairing with a simulated Vector (RTS v5)', () => {
     expect(robot.received).not.toContain('RtsChallengeMessage');
   });
 });
+
+describe('cloud sign-in (vecsetup auth)', () => {
+  it('relays the wire-pod session token and reports the result', async () => {
+    const { WIREPOD_SESSION_TOKEN } = await import('../src/rts.js');
+    const robot = await new FakeVector().init();
+    const s = await RtsSession.open(await linkTo(robot), new Sessions(path.join(dir, 's.json')), { askPin: async () => robot.pin }, 5000);
+
+    const ok = await s.cloudAuth(WIREPOD_SESSION_TOKEN, 2000);
+    expect(ok).toEqual({ success: true, status: 'authorized as primary', clientTokenGuid: 'guid-1234abcd' });
+    expect(robot.authRequests).toEqual([WIREPOD_SESSION_TOKEN]);
+
+    const bad = await s.cloudAuth('not-the-token', 2000);
+    expect(bad.success).toBe(false);
+    expect(bad.status).toBe('invalid session token');
+  });
+});

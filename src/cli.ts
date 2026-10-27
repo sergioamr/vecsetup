@@ -6,7 +6,7 @@ import { stdin, stdout } from 'node:process';
 import { Command } from 'commander';
 import stringArgv from 'string-argv';
 import { Radio, type FoundVector } from './ble.js';
-import { RtsSession } from './rts.js';
+import { RtsSession, WIREPOD_SESSION_TOKEN } from './rts.js';
 import { Sessions } from './sessions.js';
 import { serveOta } from './otaServer.js';
 import { localAddressFor } from './net.js';
@@ -97,6 +97,21 @@ program.command('ip').description('show Vector\'s IP address').action(async () =
   log((await session.wifiIp()).text);
   await close();
 });
+
+program
+  .command('auth')
+  .description('make Vector sign in with its configured server (e.g. your wire-pod); replaces the web setup\'s "activate" step')
+  .option('-t, --token <token>', 'session token to relay (default: the one wire-pod\'s own Bluetooth setup uses)', WIREPOD_SESSION_TOKEN)
+  .action(async (cmd: { token: string }) => {
+    const { session, close } = await connect(program.opts());
+    const st = await session.status();
+    if (st.wifiState !== 1 && st.wifiState !== 2) die(`Vector is not on Wi-Fi (state ${st.wifiState}). Run: vecsetup wifi <ssid>`);
+    log('Asking Vector to sign in with the server in its server_config.json...');
+    const r = await session.cloudAuth(cmd.token);
+    log(`${r.success ? 'Signed in' : 'Sign-in failed'}: ${r.status}${r.clientTokenGuid ? ` (client token ${r.clientTokenGuid.slice(0, 8)}…)` : ''}`);
+    if (!r.success) process.exitCode = 1;
+    await close();
+  });
 
 program
   .command('ota <fileOrUrl>')

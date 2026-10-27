@@ -13,6 +13,20 @@ export type RtsEvents = {
 
 export type WifiNetwork = { ssid: string; authType: number; signal: number; hidden: boolean };
 
+/** RtsCloudStatus from DDL's protocol definition. */
+export const CLOUD_STATUS: Record<number, string> = {
+  0: 'unknown error',
+  1: 'connection error (Vector could not reach its server)',
+  2: 'wrong account',
+  3: 'invalid session token',
+  4: 'authorized as primary',
+  5: 'authorized as secondary',
+  6: 'reauthorized',
+};
+
+/** The session token wire-pod's own Bluetooth setup sends (chipper/pkg/wirepod/setup/ble.go). */
+export const WIREPOD_SESSION_TOKEN = '2vMhFgktH3Jrbemm2WHkfGN';
+
 export class RtsSession {
   handler: AnyHandler = null;
   version = 0;
@@ -126,4 +140,27 @@ export class RtsSession {
   }
 
   otaCancel() { return this.handler.doOtaCancel(''); }
+
+  /**
+   * Ask Vector to sign in with its configured voice/account server (server_config.json).
+   * The robot does the network request itself; this only relays the session token.
+   */
+  async cloudAuth(sessionToken: string, timeoutMs = 90_000): Promise<{ success: boolean; status: string; clientTokenGuid: string }> {
+    if (this.version < 3) throw new Error(`cloud sign-in needs RTS v3 or later (this robot speaks v${this.version}; is it in recovery?)`);
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Vector did not answer the sign-in request in time')), timeoutMs);
+    });
+    try {
+      const m: any = await Promise.race([this.handler.doAnkiAuth(sessionToken), timeout]);
+      const v = m.value;
+      return {
+        success: Boolean(v.success),
+        status: CLOUD_STATUS[Number(v.statusCode)] ?? `status ${v.statusCode}`,
+        clientTokenGuid: String(v.clientTokenGuid ?? ''),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 }

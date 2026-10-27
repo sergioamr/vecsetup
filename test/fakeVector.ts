@@ -28,6 +28,8 @@ export class FakeVector {
   private challenge = 0;
   private pendingClientPub: Uint8Array | null = null;
   received: string[] = []; // tags of messages the client sent, for assertions
+  acceptedToken = '2vMhFgktH3Jrbemm2WHkfGN';
+  authRequests: string[] = [];
   rawChunks: number[][] = [];
 
   async init() {
@@ -157,6 +159,15 @@ export class FakeVector {
           new Rts.RtsWifiIpResponse(true, false, Uint8Array.from(this.ip), new Uint8Array(16)),
         ));
         break;
+      case 'RtsCloudSessionRequest_5': {
+        // Like vic-cloud signing in with wire-pod: only the expected token works.
+        const ok = v.sessionToken === this.acceptedToken;
+        this.authRequests.push(v.sessionToken);
+        setTimeout(() => this.send(Rts.RtsConnection_5.NewRtsConnection_5WithRtsCloudSessionResponse(
+          new Rts.RtsCloudSessionResponse(ok, ok ? Rts.RtsCloudStatus.AuthorizedAsPrimary : Rts.RtsCloudStatus.InvalidSessionToken, ok ? 'guid-1234abcd' : ''),
+        )), 20); // the real robot takes a moment: it talks to the server first
+        break;
+      }
     }
   }
 }

@@ -12,11 +12,12 @@ vecsetup scan                      # list Vectors in range (and whether they are
 vecsetup                           # interactive terminal, same commands as DDL's web setup
 vecsetup wifi MyWifi           # put Vector on Wi-Fi (asks for the password)
 vecsetup status                    # firmware, Wi-Fi, update state
+vecsetup auth                      # sign Vector in with its configured server (your wire-pod)
 vecsetup ota ./dev.ota             # serve a local .ota from this machine and install it
 vecsetup ota http://host/x.ota     # or install from a URL Vector can reach
 ```
 
-> Status: early. Verified on one robot (Debian 13, Intel 8260 adapter): pairing with PIN, saved-session reconnect without PIN, `status` and `ip` on WireOS (RTS v5). The full recovery → unlock → WireOS path was done with the web page this tool replaces; `wifi` and `ota` through vecsetup are covered by tests but not yet run on hardware. Reports from other setups are welcome.
+> Status: early. Verified on one robot (Debian 13, Intel 8260 adapter): pairing with PIN, saved-session reconnect without PIN, `status`, `ip` and `auth` against a local wire-pod on WireOS (RTS v5). The full recovery → unlock → WireOS path was done with the web page this tool replaces; `wifi` and `ota` through vecsetup are covered by tests but not yet run on hardware. Reports from other setups are welcome.
 
 ## Install
 
@@ -62,6 +63,8 @@ This is the path that worked for us. Unlocking is done at your own risk; keep Ve
    ```
    ssh -i vector_root_key -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa root@<vector-ip>
    ```
+
+5. Point Vector at your own [wire-pod](https://github.com/kercre123/wire-pod) (its "OSKR/dev bot" setup does this over SSH), then run `vecsetup auth`. This sends the sign-in request that the web setup pages relay, with the same session token wire-pod's own Bluetooth setup uses. Vector then signs in with *your* server; no website is involved.
 
 WireOS source: [os-vector/wire-os](https://github.com/os-vector/wire-os) and [os-vector/wire-os-victor](https://github.com/os-vector/wire-os-victor). For voice commands without DDL's cloud, see [wire-pod](https://github.com/kercre123/wire-pod).
 
