@@ -66,6 +66,15 @@ This is the path that worked for us. Unlocking is done at your own risk; keep Ve
 
 5. Point Vector at your own [wire-pod](https://github.com/kercre123/wire-pod) (its "OSKR/dev bot" setup does this over SSH), then run `vecsetup auth`. This sends the sign-in request that the web setup pages relay, with the same session token wire-pod's own Bluetooth setup uses. Vector then signs in with *your* server; no website is involved.
 
+   If Vector reboots into the setup screen anyway (its name plus a `wp.pvic.xyz` URL), the "complete" flag was not saved: the engine only writes it while its onboarding routine is fully active. Write it yourself over SSH and restart Vector's software:
+
+   ```
+   ssh root@<vector-ip> 'F=/data/data/com.anki.victor/persistent/onboarding/onboardingState.json;
+     echo "{\"onboardingStage\":\"Complete\"}" > $F && chown anki:anki $F && systemctl restart anki-robot.target'
+   ```
+
+   At boot the engine reads this file (`BehaviorsBootLoader::InitOnboarding` in wire-os-victor); if it is missing, Vector starts first-time setup and shows that screen.
+
 WireOS source: [os-vector/wire-os](https://github.com/os-vector/wire-os) and [os-vector/wire-os-victor](https://github.com/os-vector/wire-os-victor). For voice commands without DDL's cloud, see [wire-pod](https://github.com/kercre123/wire-pod).
 
 ## How it works
