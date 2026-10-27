@@ -30,7 +30,10 @@ async function connect(opts: Opts, onDrop?: () => void) {
   const sessions = new Sessions();
   const seconds = Number(opts.scanTime);
   log(`Scanning for ${opts.name ? `"${opts.name}"` : 'Vector'} (${seconds}s)...`);
-  const found = await radio.scan(seconds, opts.name, (v) => v.pairingMode === true);
+  // Stop at once for a robot in pairing mode, otherwise shortly after the first Vector shows up
+  // (a little grace so a second robot in range can still be listed).
+  const started = Date.now();
+  const found = await radio.scan(seconds, opts.name, (v) => v.pairingMode === true || Date.now() - started > 3000);
   if (found.length === 0) die('no Vector found. Put it on the charger and double-press the backpack button.');
   const pick: FoundVector = found.find((v) => v.pairingMode) ?? found.sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))[0];
   if (found.length > 1 && !opts.name) log(`Found ${found.map((v) => v.name).join(', ')}; using ${pick.name} (use --name to choose)`);
@@ -176,8 +179,10 @@ program.command('shell', { isDefault: true }).description('interactive terminal 
     if (args[0] === 'exit' || args[0] === 'quit') { rl.close(); return; }
     if (h.handleCli(args)) rl.prompt();
   });
-  rl.on('close', async () => { await close(); process.exit(0); });
   rl.prompt();
+  // Stay in this command until the user quits; the program exits after every command.
+  await new Promise<void>((resolve) => rl.on('close', resolve));
+  await close();
 });
 
 program.command('forget').description('forget stored pairing keys (next connection asks for a PIN)').action(() => {
@@ -196,4 +201,8 @@ program.command('doctor').description('check this machine\'s Bluetooth setup').a
   process.exitCode = checks.every((c) => c.ok !== false) ? 0 : 1;
 });
 
-program.parseAsync().catch((e) => die(e instanceof Error ? e.message : String(e)));
+// BlueZ's D-Bus connection keeps Node alive, so exit explicitly once a command is done.
+program.parseAsync().then(
+  () => process.exit(process.exitCode ?? 0),
+  (e) => die(e instanceof Error ? e.message : String(e)),
+);
